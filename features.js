@@ -3,7 +3,7 @@
 function setupAddForm(){
     populateFormOptions();
     document.getElementById('tradeDate').valueAsDate=new Date();
-    document.getElementById('addTradeForm').addEventListener('submit',e=>{
+    document.getElementById('addTradeForm').addEventListener('submit',async e=>{
         e.preventDefault();
         const editingId = document.getElementById('editingTradeId').value;
         const t={date:document.getElementById('tradeDate').value,pair:document.getElementById('tradePair').value,direction:document.getElementById('tradeDirection').value,strategy:document.getElementById('tradeStrategy').value,timeframe:document.getElementById('tradeTimeframe').value,confluence:parseInt(document.getElementById('tradeConfluence').value)||3,entry:parseFloat(document.getElementById('tradeEntry').value),exit:parseFloat(document.getElementById('tradeExit').value),sl:parseFloat(document.getElementById('tradeSL').value)||null,tp:parseFloat(document.getElementById('tradeTP').value)||null,lot:parseFloat(document.getElementById('tradeLot').value),pnl:parseFloat(document.getElementById('tradePnl').value),notes:document.getElementById('tradeNotes').value.trim(),account:db.getActiveAccount(),screenshot:document.getElementById('screenshotPreview').src||'',isStarred:false};
@@ -11,14 +11,14 @@ function setupAddForm(){
         if(!document.getElementById('screenshotPreview').style.display||document.getElementById('screenshotPreview').style.display==='none')t.screenshot='';
         
         if(editingId) {
-            db.update(parseInt(editingId), t);
+            await db.update(parseInt(editingId), t);
             document.getElementById('editingTradeId').value = '';
         } else {
-            db.add(t);
+            await db.add(t);
         }
         
         document.getElementById('addTradeForm').reset();
-        location.reload(); // Force refresh to show changes
+        location.reload(); 
     });
 
     document.getElementById('addTradeForm').addEventListener('reset', () => {
@@ -82,7 +82,7 @@ function loadGalleryGrid(){
     g.innerHTML=list.length?list.map(item=>`<div class="gallery-card"><div class="gallery-img" onclick="zoomImage('${item.screenshot}')"><img src="${item.screenshot}" alt="${item.pair} ${item.strategy}"></div><div class="gallery-body"><div class="gallery-title">${item.pair} ${item.direction} — ${item.strategy}</div><div class="gallery-meta"><span class="gallery-tag" style="background:rgba(168,85,247,.13);color:var(--purple-light)">${item.pair}</span><span class="gallery-tag" style="background:rgba(99,102,241,.13);color:var(--indigo)">${item.timeframe||'-'}</span><span class="gallery-tag" style="background:rgba(34,197,94,.13);color:var(--green)">${item.confluence||0}/5 Conf</span></div><div class="gallery-notes">${item.notes||'Нет комментариев'}</div><div class="gallery-footer"><span class="gallery-pnl" style="color:${item.pnl>=0?'var(--green)':'var(--red)'}">${item.pnl>=0?'+':''}$${item.pnl.toFixed(0)}</span><button class="btn-delete-sm" onclick="toggleStar(${item.id})">⭐️ Удалить</button></div></div></div>`).join(''):'<div style="text-align:center;padding:60px;color:var(--text-muted);grid-column:1/-1"><p style="font-size:2rem;margin-bottom:8px">📸</p><p>Пока нет сохраненных сделок со скриншотами.</p></div>';
 }
 // TARGETS
-function setupTargetsPage(){document.getElementById('saveTargetsBtn').addEventListener('click',()=>{const t={weeklyPnl:parseFloat(document.getElementById('targetWeeklyPnl').value)||500,monthlyPnl:parseFloat(document.getElementById('targetMonthlyPnl').value)||2000,weeklyTrades:parseInt(document.getElementById('targetWeeklyTrades').value)||10,minWinRate:parseFloat(document.getElementById('targetMinWR').value)||55,maxDailyLoss:parseFloat(document.getElementById('targetMaxLoss').value)||200};db.saveTargets(t);showToast("Цели сохранены!",'success');loadDashboard()})}
+function setupTargetsPage(){document.getElementById('saveTargetsBtn').addEventListener('click',async ()=>{const t={weeklyPnl:parseFloat(document.getElementById('targetWeeklyPnl').value)||500,monthlyPnl:parseFloat(document.getElementById('targetMonthlyPnl').value)||2000,weeklyTrades:parseInt(document.getElementById('targetWeeklyTrades').value)||10,minWinRate:parseFloat(document.getElementById('targetMinWR').value)||55,maxDailyLoss:parseFloat(document.getElementById('targetMaxLoss').value)||200};await db.saveTargets(t);showToast("Цели сохранены!",'success');loadDashboard()})}
 function loadTargetsForm(){const t=db.getTargets();document.getElementById('targetWeeklyPnl').value=t.weeklyPnl;document.getElementById('targetMonthlyPnl').value=t.monthlyPnl;document.getElementById('targetWeeklyTrades').value=t.weeklyTrades;document.getElementById('targetMinWR').value=t.minWinRate;document.getElementById('targetMaxLoss').value=t.maxDailyLoss}
 // MODALS
 function setupModals(){
@@ -232,8 +232,8 @@ window.deleteAccount = function(id) {
         showToast("Должен остаться хотя бы один счет!", "error");
         return;
     }
-    showConfirm("Удаление счета", "Вы действительно хотите удалить этот счет и все его сделки?", () => {
-        db.removeAccount(id);
+    showConfirm("Удаление счета", "Вы действительно хотите удалить этот счет и все его сделки?", async () => {
+        await db.removeAccount(id);
         loadAccountsList();
         setupAccounts();
         loadDashboard();
@@ -243,11 +243,11 @@ window.deleteAccount = function(id) {
 };
 
 window.deletePair = function(p) {
-    showConfirm("Удаление пары", `"${p}" удалить?`, () => {
+    showConfirm("Удаление пары", `"${p}" удалить?`, async () => {
         const s = db.getSettings();
         if(s.pairs) {
             s.pairs = s.pairs.filter(x => x !== p);
-            db.saveSettings(s);
+            await db.saveSettings(s);
             loadAccountsList();
             populateFormOptions();
             if(typeof populateFilters==='function') populateFilters();
@@ -257,11 +257,11 @@ window.deletePair = function(p) {
 };
 
 window.deleteStrategy = function(st) {
-    showConfirm("Удаление стратегии", `"${st}" удалить?`, () => {
+    showConfirm("Удаление стратегии", `"${st}" удалить?`, async () => {
         const s = db.getSettings();
         if(s.strategies) {
             s.strategies = s.strategies.filter(x => x !== st);
-            db.saveSettings(s);
+            await db.saveSettings(s);
             loadAccountsList();
             populateFormOptions();
             if(typeof populateFilters==='function') populateFilters();
@@ -381,14 +381,14 @@ function setupAuth() {
     // Onboarding Form Listener
     const obForm = document.getElementById('onboardingAccountForm');
     if (obForm) {
-        obForm.addEventListener('submit', e => {
+        obForm.addEventListener('submit', async e => {
             e.preventDefault();
             const name = document.getElementById('onboardingAccName').value.trim();
             const balance = parseMoney(document.getElementById('onboardingAccBalance').value);
             
             const newAcc = { id: 'acc' + Date.now(), name, balance };
-            db.addAccount(newAcc);
-            db.setActiveAccount(newAcc.id);
+            await db.addAccount(newAcc);
+            await db.setActiveAccount(newAcc.id);
             
             showToast("Счет создан! Удачной торговли.", "success");
             setTimeout(() => location.reload(), 1000);
@@ -478,7 +478,7 @@ function setupUserInfo(user) {
 
 // ADMIN PANEL
 function setupAdminPage() {
-    document.getElementById('addUserForm').addEventListener('submit', e => {
+    document.getElementById('addUserForm').addEventListener('submit', async e => {
         e.preventDefault();
         const u = {
             name: document.getElementById('adminNewName').value.trim(),
@@ -486,19 +486,19 @@ function setupAdminPage() {
             password: document.getElementById('adminNewPass').value.trim(),
             role: document.getElementById('adminNewRole').value
         };
-        db.addUser(u);
+        await db.addUser(u);
         e.target.reset();
-        location.reload(); // Nuclear option: force reload to show new user
+        location.reload(); 
     });
 
-    document.getElementById('adminSelfUpdateForm').addEventListener('submit', e => {
+    document.getElementById('adminSelfUpdateForm').addEventListener('submit', async e => {
         e.preventDefault();
         const login = document.getElementById('adminSelfLogin').value.trim();
         const pass = document.getElementById('adminSelfPass').value.trim();
         const user = JSON.parse(localStorage.getItem('tv_current_user'));
         if (login) user.login = login;
         if (pass) user.password = pass;
-        db.updateUser(user.id, user);
+        await db.updateUser(user.id, user);
         localStorage.setItem('tv_current_user', JSON.stringify(user));
         e.target.reset();
         location.reload();
@@ -627,8 +627,8 @@ window.openUserModal = function(userId) {
 }
 
 window.adminDeleteUser = function(id) {
-    showConfirm("Удаление пользователя", `Удалить пользователя ${id}?`, () => {
-        db.removeUser(id);
+    showConfirm("Удаление пользователя", `Удалить пользователя ${id}?`, async () => {
+        await db.removeUser(id);
         location.reload();
     });
 }

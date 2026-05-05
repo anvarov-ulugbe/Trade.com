@@ -1,6 +1,7 @@
 // ===== TradeVault App v2 — Core =====
-document.addEventListener('DOMContentLoaded',()=>{initApp()});
-function initApp(){
+document.addEventListener('DOMContentLoaded',async ()=>{await initApp()});
+async function initApp(){
+    await db.init();
     setupNav();setupMobile();setDate();setupTheme();setupAccounts();
     loadDashboard();loadTradesList();loadStatsPage();loadCalendar();
     setupAddForm();setupFilters();setupReset();setupSearch();
@@ -84,7 +85,7 @@ function setupReset(){document.getElementById('resetDbBtn').addEventListener('cl
 // THEME
 function setupTheme(){const s=db.getSettings();if(s.theme==='light')document.body.classList.add('light');document.getElementById('themeToggle').textContent=s.theme==='light'?'☀️':'🌙';document.getElementById('themeToggle').addEventListener('click',()=>{document.body.classList.toggle('light');const set=db.getSettings();set.theme=document.body.classList.contains('light')?'light':'dark';db.saveSettings(set);document.getElementById('themeToggle').textContent=set.theme==='light'?'☀️':'🌙'})}
 // ACCOUNTS
-function setupAccounts(){const sel=document.getElementById('accountSelect');const accs=db.getAccounts();const active=db.getActiveAccount();sel.innerHTML=accs.map(a=>`<option value="${a.id}" ${a.id===active?'selected':''}>${a.name} ($${a.balance.toLocaleString()})</option>`).join('');if(typeof updateCustomSelect==='function')updateCustomSelect(sel);sel.addEventListener('change',()=>{db.setActiveAccount(sel.value);loadDashboard();loadTradesList();loadStatsPage();loadCalendar()})}
+function setupAccounts(){const sel=document.getElementById('accountSelect');const accs=db.getAccounts();const active=db.getActiveAccount();sel.innerHTML=accs.map(a=>`<option value="${a.id}" ${a.id===active?'selected':''}>${a.name} ($${a.balance.toLocaleString()})</option>`).join('');if(typeof updateCustomSelect==='function')updateCustomSelect(sel);sel.addEventListener('change',async ()=>{await db.setActiveAccount(sel.value);loadDashboard();loadTradesList();loadStatsPage();loadCalendar()})}
 // DASHBOARD
 function loadDashboard(){const acc=db.getActiveAccount();const s=db.getStats(acc);const prog=db.getWeekProgress();
 document.getElementById('badgeTrades').textContent=s.totalTrades;
@@ -143,9 +144,9 @@ function setupWithdrawals() {
         `).join('') : '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">История пуста</td></tr>';
 
         body.querySelectorAll('.btn-delete-withdraw').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const index = parseInt(btn.dataset.index);
-                if (db.removeWithdrawal(activeId, index)) {
+                if (await db.removeWithdrawal(activeId, index)) {
                     renderWithdrawalHistory();
                     loadDashboard();
                     showToast("Запись удалена", "info");
@@ -161,7 +162,7 @@ function setupWithdrawals() {
     closeBtn.addEventListener('click', () => modal.classList.remove('show'));
     modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
         const val = amountInp.value.replace(/[^0-9.]/g, '');
         const amount = parseFloat(val);
         if (isNaN(amount) || amount <= 0) {
@@ -170,7 +171,7 @@ function setupWithdrawals() {
         }
 
         const activeId = db.getActiveAccount();
-        if (db.addWithdrawal(activeId, amount)) {
+        if (await db.addWithdrawal(activeId, amount)) {
             showToast("Вывод зафиксирован!", "success");
             amountInp.value = '';
             renderWithdrawalHistory();
@@ -192,16 +193,17 @@ function loadTradesList(query){const acc=db.getActiveAccount();const trades=quer
 function fullTradeRow(t){const r=t.pnl>0?'win':t.pnl<0?'loss':'breakeven';const sBtn=`<button onclick="event.stopPropagation();toggleStar(${t.id})" style="color:${t.isStarred?'#fbbf24':'#4b5574'};background:transparent;border:none;cursor:pointer;font-size:1.1rem;padding:0 4px">${t.isStarred?'★':'☆'}</button>`;return`<tr onclick="openTradeModal(${t.id})" style="cursor:pointer"><td>${t.date}</td><td style="font-weight:600;color:var(--text-primary)">${t.pair}</td><td><span class="dir-${t.direction.toLowerCase()}">${t.direction}</span></td><td style="font-family:'JetBrains Mono';font-size:.82rem">${t.entry}</td><td style="font-family:'JetBrains Mono';font-size:.82rem">${t.exit}</td><td>${t.lot}</td><td><span class="pnl-${t.pnl>=0?'positive':'negative'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span></td><td style="font-size:.78rem">${t.timeframe||'-'}</td><td>${confDots(t.confluence||0)}</td><td style="font-size:.78rem;color:var(--purple-light)">${t.strategy}</td><td><span class="status-badge status-${r}">${r==='win'?'WIN':r==='loss'?'LOSS':'BE'}</span></td><td>${sBtn}</td><td><button class="btn-delete-sm" onclick="event.stopPropagation();deleteTrade(${t.id})">✕</button></td></tr>`}
 function populateFilters(){const trades=db.getAll();const ps=[...new Set(trades.map(t=>t.pair))].sort(),ss=[...new Set(trades.map(t=>t.strategy))].sort();const pS=document.getElementById('filterPair'),sS=document.getElementById('filterStrategy');const cp=pS.value,cs=sS.value;pS.innerHTML='<option value="">Все пары</option>'+ps.map(p=>`<option value="${p}" ${p===cp?'selected':''}>${p}</option>`).join('');sS.innerHTML='<option value="">Все стратегии</option>'+ss.map(s=>`<option value="${s}" ${s===cs?'selected':''}>${s}</option>`).join('');if(typeof updateCustomSelect==='function'){updateCustomSelect(pS);updateCustomSelect(sS);}}
 function setupFilters(){document.getElementById('filterBtn').addEventListener('click',()=>{const f=db.filter({account:db.getActiveAccount(),pair:document.getElementById('filterPair').value,result:document.getElementById('filterResult').value,strategy:document.getElementById('filterStrategy').value,timeframe:document.getElementById('filterTimeframe').value});const sorted=[...f].sort((a,b)=>new Date(b.date)-new Date(a.date));document.getElementById('tradesBody').innerHTML=sorted.length?sorted.map(t=>fullTradeRow(t)).join(''):'<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text-muted)">Не найдено</td></tr>'})}
-window.deleteTrade=function(id){const t=db.getById(id);if(t)showConfirm("Удаление сделки", `"${t.pair} ${t.direction}" удалить?`, ()=>{db.remove(id);location.reload()})}
+window.deleteTrade=function(id){const t=db.getById(id);if(t)showConfirm("Удаление сделки", `"${t.pair} ${t.direction}" удалить?`, async ()=>{await db.remove(id);location.reload()})}
 window.toggleStar=function(id){
     const t=db.getById(id);
     if(t){
-        db.toggleStar(id);
-        if(!t.screenshot && !t.isStarred) {
-            showToast("Без скриншота не будет отображаться в галерее!", "warning");
-        } else {
-            showToast(t.isStarred ? "Звезда удалена" : "Добавлено в галерею! ⭐️", "success");
-        }
-        loadTradesList();loadDashboard();if(document.getElementById('page-gallery').classList.contains('active'))loadGalleryGrid();
+        db.toggleStar(id).then(() => {
+            if(!t.screenshot && !t.isStarred) {
+                showToast("Без скриншота не будет отображаться в галерее!", "warning");
+            } else {
+                showToast(t.isStarred ? "Звезда удалена" : "Добавлено в галерею! ⭐️", "success");
+            }
+            loadTradesList();loadDashboard();if(document.getElementById('page-gallery').classList.contains('active'))loadGalleryGrid();
+        });
     }
 }
