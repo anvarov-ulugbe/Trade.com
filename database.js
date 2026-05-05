@@ -13,8 +13,7 @@ const SUPABASE_KEY = 'sb_publishable_gVd_dI6RIFlVEk2ksjMD_g_xdvVdoTC';
 
 // Initial data for fallback
 const DEFAULT_USERS = [
-    { id: 'admin', login: 'admin', password: 'admin', name: 'System Admin', role: 'admin' },
-    { id: 'user1', login: 'trader', password: 'password', name: 'SMC Trader', role: 'user' }
+    { id: 'admin', login: 'admin', password: 'admin', name: 'System Admin', role: 'admin' }
 ];
 
 const DEFAULT_SETTINGS = {
@@ -190,8 +189,15 @@ class TradeDatabase {
     async removeUser(id) {
         const list = this.getUsers().filter(u => u.id !== id);
         localStorage.setItem(DB_KEYS.USERS, JSON.stringify(list));
-        if (this.isCloudEnabled) {
-            await this.client.from('tv_users').delete().eq('id', id);
+        
+        // Only attempt cloud delete if ID is a valid UUID (not 'admin', etc.)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        
+        if (this.isCloudEnabled && isUUID) {
+            const { error } = await this.client.from('tv_users').delete().eq('id', id);
+            if (error) {
+                console.error("Supabase delete user error:", error);
+            }
         }
     }
     authenticate(login, password) {
