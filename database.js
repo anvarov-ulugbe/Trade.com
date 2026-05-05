@@ -69,16 +69,21 @@ class TradeDatabase {
             const { data: users, error: uErr } = await this.client.from('tv_users').select('*');
             if (!uErr && users) {
                 const localUsers = this.getUsers();
-                const mergedUsers = [...DEFAULT_USERS];
+                const adminInLocal = localUsers.find(u => u.id === 'admin');
                 
-                // Start with cloud users to ensure they have correct IDs
+                // Start with the current admin (preserve local changes like new password)
+                const mergedUsers = [adminInLocal || DEFAULT_USERS[0]];
+                
+                // Add cloud users
                 users.forEach(u => {
-                    mergedUsers.push(u);
+                    if (u.login !== 'admin') { // Avoid duplicating admin if it exists in cloud
+                        mergedUsers.push(u);
+                    }
                 });
 
-                // Add local users only if their login is not in cloud
+                // Add other local users only if they are not in cloud
                 localUsers.forEach(lu => {
-                    if (!mergedUsers.find(mu => mu.login === lu.login)) {
+                    if (lu.id !== 'admin' && !mergedUsers.find(mu => mu.login === lu.login)) {
                         mergedUsers.push(lu);
                     }
                 });
@@ -181,7 +186,7 @@ class TradeDatabase {
         if (idx >= 0) {
             Object.assign(list[idx], data);
             localStorage.setItem(DB_KEYS.USERS, JSON.stringify(list));
-            if (this.isCloudEnabled) {
+            if (this.isCloudEnabled && id !== 'admin') {
                 await this.client.from('tv_users').update(data).eq('id', id);
             }
         }
