@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeVault — Панель торгового журнала</title>
+    <meta name="description" content="TradeVault - Professional trading journal with statistics, analytics, and trade tracking.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-box" id="authBox" data-mode="login">
+            <div class="auth-logo">
+                <div class="logo-icon" style="width:64px;height:64px;border-radius:18px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="url(#lgAuth)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 7H21V11" stroke="url(#lgAuth)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lgAuth" x1="3" y1="7" x2="21" y2="17"><stop stop-color="#a855f7"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs></svg></div>
+            </div>
+            <h1 class="auth-title">TradeVault</h1>
+            <p class="auth-subtitle" id="authSubtitle">Введите данные для входа</p>
+            
+            <form class="auth-form" id="emailAuthForm">
+                <div class="form-group signup-only">
+                    <label>Полное имя</label>
+                    <input type="text" id="authName" placeholder="Ваше имя...">
+                </div>
+                <div class="form-group">
+                    <label>Логин / Email</label>
+                    <input type="text" id="authLogin" placeholder="Ваш логин..." required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="authPass" placeholder="••••••••" required>
+                </div>
+                <div class="form-group signup-only" style="margin-bottom: 20px;">
+                    <label>Подтвердите пароль</label>
+                    <input type="password" id="authPassConfirm" placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-primary" id="authSubmitBtn" style="width:100%; justify-content:center; margin-top: 10px;">Войти</button>
+            </form>
+            
+            <div class="auth-toggle">
+                <span id="toggleText">Нет аккаунта?</span>
+                <a href="#" id="toggleAuthMode">Зарегистрироваться</a>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="url(#lg1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 7H21V11" stroke="url(#lg1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg1" x1="3" y1="7" x2="21" y2="17"><stop stop-color="#a855f7"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs></svg></div>
+                <span class="logo-text">TradeVault</span>
+            </div>
+        </div>
+        <div class="account-selector" id="accountSelector"><select id="accountSelect"></select></div>
+        <nav class="sidebar-nav">
+            <div id="trading-nav">
+                <a href="#" class="nav-item active" data-page="dashboard" id="nav-dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>Дашборд</span></a>
+                <a href="#" class="nav-item" data-page="trades" id="nav-trades">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17L9 11L13 15L21 7"/><path d="M17 7H21V11"/></svg>
+                    <span>Сделки</span><span class="badge" id="badgeTrades">0</span></a>
+                <a href="#" class="nav-item" data-page="add" id="nav-add">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <span>Новая сделка</span></a>
+                <a href="#" class="nav-item" data-page="stats" id="nav-stats">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20V14"/></svg>
+                    <span>Статистика</span></a>
+                <a href="#" class="nav-item" data-page="calendar" id="nav-calendar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Календарь</span></a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-page="gallery" id="nav-gallery">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span>Галерея</span></a>
+                <a href="#" class="nav-item" data-page="targets" id="nav-targets">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    <span>Цели</span></a>
+                <a href="#" class="nav-item" data-page="chart" id="nav-chart">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17l-6-6-4 4-5-5"/></svg>
+                    <span>Графики</span></a>
+                <a href="#" class="nav-item" data-page="accounts" id="nav-accounts">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Настройки</span></a>
+            </div>
+            <a href="#" class="nav-item" data-page="admin" id="nav-admin" style="display:none; color:var(--orange);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Админ панель</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar" id="sidebarAvatar">T</div>
+                <div class="user-info"><span class="user-name" id="sidebarName">Trader</span><span class="user-role" id="sidebarRole">ICT Strategy</span></div>
+                <button class="btn-logout" id="btnLogout" title="Выйти из системы">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <header class="topbar">
+            <button class="menu-toggle" id="menuToggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+            <div class="search-bar" id="searchBar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Поиск..." id="searchInput"></div>
+            <div class="topbar-actions" id="topbarActions">
+                <button class="icon-btn" id="themeToggle" title="Сменить тему">🌙</button>
+                <button class="icon-btn" id="resetDbBtn" title="Сбросить базу"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <div class="topbar-date" id="currentDate"></div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD -->
+        <div class="page active" id="page-dashboard">
+            <div class="page-header"><h1>Дашборд</h1><p class="page-subtitle">Ваши результаты торговли</p></div>
+            <!-- Dashboard Header Info -->
+            <div class="dash-top-row">
+                <div class="streak-card" id="streakCard">
+                    <div class="streak-fire">🔥</div>
+                    <div class="streak-info">
+                        <div class="streak-count" id="streakCount">0</div>
+                        <div class="streak-label" id="streakLabel">Текущий страйк</div>
+                    </div>
+                </div>
+                <div class="balance-card">
+                    <div class="balance-item">
+                        <span class="balance-label">Текущий баланс</span>
+                        <span class="balance-value" id="liveBalance">$0.00</span>
+                    </div>
+                    <div class="balance-divider"></div>
+                    <div class="balance-item">
+                        <span class="balance-label">Выведено (Withdraw)</span>
+                        <span class="balance-value withdrawal" id="totalWithdrawals">$0.00</span>
+                    </div>
+                    <button class="btn-withdraw-add" id="btnOpenWithdraw" title="Добавить вывод">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Targets Progress -->
+            <div class="targets-grid" id="targetsProgress"></div>
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card stat-card-green"><div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="stat-info"><span class="stat-value" id="totalPnl">$0</span><span class="stat-label">Общий P&L</span></div><div class="stat-trend up" id="pnlTrend"><span>0</span></div></div>
+                <div class="stat-card stat-card-purple"><div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17L9 11L13 15L21 7"/></svg></div><div class="stat-info"><span class="stat-value" id="totalTrades">0</span><span class="stat-label">Всего сделок</span></div><div class="stat-trend up"><span>Все</span></div></div>
+                <div class="stat-card stat-card-blue"><div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="stat-info"><span class="stat-value" id="winRate">0%</span><span class="stat-label">Win Rate</span></div><div class="stat-trend up" id="wrTrend"><span>0</span></div></div>
+                <div class="stat-card stat-card-orange"><div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></div><div class="stat-info"><span class="stat-value" id="profitFactor">0</span><span class="stat-label">Profit Factor</span></div><div class="stat-trend up" id="pfTrend"><span>Target: 1.5</span></div></div>
+            </div>
+            <div class="charts-row"><div class="chart-card chart-large"><div class="chart-header"><div><h3>Equity Curve</h3><p class="chart-subtitle">Кривая баланса</p></div></div><div class="chart-container"><canvas id="equityChart"></canvas></div></div><div class="chart-card chart-small"><div class="chart-header"><h3>Win / Loss</h3></div><div class="chart-container chart-container-donut"><canvas id="winLossChart"></canvas></div></div></div>
+            <div class="charts-row"><div class="chart-card chart-medium"><div class="chart-header"><div><h3>Недельный P&L</h3></div><div class="chart-legend"><span class="legend-dot green"></span> Прибыль <span class="legend-dot red"></span> Убыток</div></div><div class="chart-container"><canvas id="weeklyChart"></canvas></div></div><div class="chart-card chart-medium"><div class="chart-header"><h3>Топ пары</h3></div><div class="top-list" id="topPairsList"></div></div></div>
+            <div class="activity-section"><div class="chart-card"><div class="chart-header"><h3>Последние сделки</h3></div><div class="activity-table-wrapper"><table class="activity-table"><thead><tr><th>Дата</th><th>Пара</th><th>Направление</th><th>Вход</th><th>Выход</th><th>Лот</th><th>P&L</th><th>Conf.</th><th>Стратегия</th><th>Результат</th><th></th></tr></thead><tbody id="recentBody"></tbody></table></div></div></div>
+        </div>
+
+        <!-- TRADES -->
+        <div class="page" id="page-trades">
+            <div class="page-header"><h1>Все сделки</h1><p class="page-subtitle">История сделок</p></div>
+            <div class="filter-bar">
+                <select id="filterPair"><option value="">Все пары</option></select>
+                <select id="filterResult"><option value="">Все</option><option value="win">Win</option><option value="loss">Loss</option><option value="breakeven">BE</option></select>
+                <select id="filterStrategy"><option value="">Все стратегии</option></select>
+                <select id="filterTimeframe"><option value="">Все ТФ</option><option value="1min">1min</option><option value="3min">3min</option><option value="5min">5min</option><option value="15min">15min</option><option value="1H">1H</option><option value="4H">4H</option></select>
+                <button class="btn-filter" id="filterBtn">Фильтровать</button>
+            </div>
+            <div class="activity-table-wrapper"><table class="activity-table"><thead><tr><th>Дата</th><th>Пара</th><th>Направление</th><th>Вход</th><th>Выход</th><th>Лот</th><th>P&L</th><th>ТФ</th><th>Conf.</th><th>Стратегия</th><th>Результат</th><th></th><th></th></tr></thead><tbody id="tradesBody"></tbody></table></div>
+        </div>
+
+        <!-- ADD TRADE -->
+        <div class="page" id="page-add">
+            <div class="page-header"><h1>Записать новую сделку</h1><p class="page-subtitle">Введите данные сделки</p></div>
+            <div class="add-form-wrapper"><form class="add-form" id="addTradeForm">
+                <div class="form-row"><div class="form-group"><label for="tradeDate">Дата</label><input type="date" id="tradeDate" required></div><div class="form-group"><label for="tradePair">Пара</label><select id="tradePair" required></select></div></div>
+                <div class="form-row"><div class="form-group"><label for="tradeDirection">Направление</label><select id="tradeDirection" required><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div><div class="form-group"><label for="tradeStrategy">Стратегия</label><select id="tradeStrategy" required></select></div></div>
+                <div class="form-row"><div class="form-group"><label for="tradeTimeframe">Таймфрейм</label><select id="tradeTimeframe" required><option value="1min">1 min</option><option value="3min">3 min</option><option value="5min">5 min</option><option value="15min">15 min</option><option value="1H" selected>1 Hour</option><option value="4H">4 Hour</option></select></div><div class="form-group"><label for="tradeConfluence">Confluence (1-5)</label><input type="number" id="tradeConfluence" min="1" max="5" value="3" required></div></div>
+                <div class="form-row"><div class="form-group"><label for="tradeEntry">Цена входа</label><input type="number" id="tradeEntry" step="any" placeholder="1.08500" required></div><div class="form-group"><label for="tradeExit">Цена выхода</label><input type="number" id="tradeExit" step="any" placeholder="1.09200" required></div></div>
+                <div class="form-row"><div class="form-group"><label for="tradeSL">Stop Loss</label><input type="number" id="tradeSL" step="any" placeholder="1.08200"></div><div class="form-group"><label for="tradeTP">Take Profit</label><input type="number" id="tradeTP" step="any" placeholder="1.09500"></div></div>
+                <div class="form-row"><div class="form-group"><label for="tradeLot">Объем лота</label><input type="number" id="tradeLot" step="any" placeholder="0.10" required></div><div class="form-group"><label for="tradePnl">P&L ($)</label><input type="number" id="tradePnl" step="any" placeholder="125.50" required></div></div>
+                <div class="form-group full-width"><label for="tradeNotes">Комментарии</label><textarea id="tradeNotes" rows="3" placeholder="Заметки о сделке..."></textarea></div>
+                <div class="form-group full-width"><label>Скриншот</label><div class="screenshot-upload" id="screenshotUpload"><div class="screenshot-upload-icon">📸</div><div class="screenshot-upload-text">Нажмите или перетащите, чтобы загрузить скриншот</div><input type="file" accept="image/*" id="screenshotInput"><img class="screenshot-preview" id="screenshotPreview" style="display:none"></div></div>
+                <div class="form-actions"><button type="submit" class="btn-primary">💾 Сохранить</button><button type="reset" class="btn-secondary">Очистить</button></div>
+            </form></div>
+        </div>
+
+        <!-- STATISTICS -->
+        <div class="page" id="page-stats">
+            <div class="page-header"><h1>Подробная статистика</h1></div>
+            <div class="stats-detail-grid" id="statsDetailGrid"></div>
+            <div class="charts-row" style="margin-top:24px"><div class="chart-card chart-medium"><div class="chart-header"><h3>Drawdown</h3><p class="chart-subtitle">Максимальная просадка</p></div><div class="chart-container"><canvas id="drawdownChart"></canvas></div></div><div class="chart-card chart-medium"><div class="chart-header"><h3>Win Rate по Confluence</h3></div><div class="chart-container"><canvas id="confluenceChart"></canvas></div></div></div>
+            <div class="charts-row"><div class="chart-card chart-medium"><div class="chart-header"><h3>P&L по стратегии</h3></div><div class="chart-container"><canvas id="strategyChart"></canvas></div></div><div class="chart-card chart-medium"><div class="chart-header"><h3>P&L по таймфрейму</h3></div><div class="chart-container"><canvas id="timeframeChart"></canvas></div></div></div>
+            <div class="charts-row"><div class="chart-card chart-medium"><div class="chart-header"><h3>P&L по парам</h3></div><div class="chart-container"><canvas id="pairChart"></canvas></div></div><div class="chart-card chart-medium"><div class="chart-header"><h3>Дни недели</h3></div><div class="chart-container"><canvas id="dayOfWeekChart"></canvas></div></div></div>
+            <!-- Monthly Heatmap -->
+            <div class="chart-card" style="margin-top:4px"><div class="chart-header"><h3>Ежемесячная тепловая карта P&L</h3><p class="chart-subtitle">Результаты за год</p></div><div class="heatmap-grid" id="heatmapGrid"></div></div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div class="page" id="page-calendar">
+            <div class="page-header"><h1>Торговый календарь</h1></div>
+            <div class="calendar-nav"><button class="btn-cal-nav" id="calPrev">◀</button><h2 id="calTitle">May 2026</h2><button class="btn-cal-nav" id="calNext">▶</button></div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <!-- GALLERY -->
+        <div class="page" id="page-gallery">
+            <div class="page-header"><h1>Галерея</h1><p class="page-subtitle">Лучшие торговые сетапы (Избранное)</p></div>
+            <div class="gallery-grid" id="galleryGrid"></div>
+        </div>
+
+        <!-- TARGETS -->
+        <div class="page" id="page-targets">
+            <div class="page-header"><h1>Цели</h1><p class="page-subtitle">Настройка недельных/месячных целей</p></div>
+            <div class="targets-form" id="targetsForm">
+                <div class="form-row"><div><label>Цель по недельному P&L ($)</label><input type="number" id="targetWeeklyPnl" step="any"></div><div><label>Цель по месячному P&L ($)</label><input type="number" id="targetMonthlyPnl" step="any"></div></div>
+                <div class="form-row"><div><label>Макс. сделок в неделю</label><input type="number" id="targetWeeklyTrades"></div><div><label>Мин. Win Rate (%)</label><input type="number" id="targetMinWR" step="any"></div></div>
+                <div class="form-row"><div><label>Макс. дневной убыток ($)</label><input type="number" id="targetMaxLoss" step="any"></div></div>
+                <button class="btn-primary" id="saveTargetsBtn" type="button">💾 Сохранить</button>
+            </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="page" id="page-accounts">
+            <div class="page-header"><h1>Настройки</h1><p class="page-subtitle">Управление счетами, парами и стратегиями</p></div>
+            
+            <div style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 12px; font-size: 1rem;">Счета</h3>
+                <div class="rules-list" id="accountsList"></div>
+                <div class="add-rule-row" style="margin-top: 12px">
+                    <input type="text" id="newAccountName" placeholder="Название счета (например: FTMO 100k)">
+                    <input type="text" id="newAccountBalance" placeholder="Баланс ($)" style="max-width: 150px;" class="money-input">
+                    <button class="btn-primary" id="addAccountBtn">+ Добавить</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 12px; font-size: 1rem;">Пары (Pairs)</h3>
+                <div class="rules-list" id="pairsList"></div>
+                <div class="add-rule-row" style="margin-top: 12px">
+                    <input type="text" id="newPairInput" placeholder="Новая пара (например: EURUSD)">
+                    <button class="btn-primary" id="addPairBtn">+ Добавить</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 12px; font-size: 1rem;">Стратегии</h3>
+                <div class="rules-list" id="strategiesList"></div>
+                <div class="add-rule-row" style="margin-top: 12px">
+                    <input type="text" id="newStrategyInput" placeholder="Новая стратегия (например: ICT OB)">
+                    <button class="btn-primary" id="addStrategyBtn">+ Добавить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN PANEL -->
+        <div class="page" id="page-admin">
+            <div class="page-header"><h1>Админ панель</h1><p class="page-subtitle">Управление пользователями и системой</p></div>
+            
+            <div class="charts-row">
+                <div class="chart-card chart-large">
+                    <div class="chart-header"><h3>Список пользователей</h3></div>
+                    <div class="activity-table-wrapper">
+                        <table class="activity-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Логин</th>
+                                    <th>Имя</th>
+                                    <th>Роль</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="chart-card chart-small">
+                    <div class="chart-header"><h3>Добавить пользователя</h3></div>
+                    <form id="addUserForm" class="auth-form" style="padding: 0; background: transparent; box-shadow: none;">
+                        <div class="form-group"><label>Имя</label><input type="text" id="adminNewName" required></div>
+                        <div class="form-group"><label>Логин</label><input type="text" id="adminNewLogin" required></div>
+                        <div class="form-group"><label>Пароль</label><input type="password" id="adminNewPass" required></div>
+                        <div class="form-group"><label>Роль</label><select id="adminNewRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+                        <button type="submit" class="btn-primary" style="width:100%; justify-content:center; margin-top:20px;">Создать</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="chart-card" style="margin-top: 24px; max-width: 500px;">
+                <div class="chart-header"><h3>Мои данные (Admin)</h3></div>
+                <form id="adminSelfUpdateForm" class="auth-form" style="padding: 0; background: transparent; box-shadow: none;">
+                    <div class="form-row">
+                        <div class="form-group"><label>Новый логин</label><input type="text" id="adminSelfLogin"></div>
+                        <div class="form-group"><label>Новый пароль</label><input type="password" id="adminSelfPass"></div>
+                    </div>
+                    <button type="submit" class="btn-primary">Обновить мои данные</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- CHART PAGE -->
+        <div class="page" id="page-chart">
+            <div class="page-header" style="flex-shrink: 0; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h1>Анализ графиков</h1>
+                        <p class="page-subtitle">Онлайн котировки TradingView</p>
+                    </div>
+                    <div id="chartPairsQuick" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                </div>
+            </div>
+            <div style="flex: 1; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); position: relative;" id="tv_chart_container">
+                <!-- TradingView Widget BEGIN -->
+                <div class="tradingview-widget-container" style="height:100%;width:100%">
+                    <div id="tradingview_chart" style="height:100%;width:100%"></div>
+                    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                    <script type="text/javascript">
+                    window.currentChartSymbol = "FX:EURUSD";
+                    window.initTVWidget = function(symbol) {
+                        if (symbol) window.currentChartSymbol = symbol;
+                        new TradingView.widget({
+                            "autosize": true,
+                            "symbol": window.currentChartSymbol,
+                            "interval": "D",
+                            "timezone": "Etc/UTC",
+                            "theme": "dark",
+                            "style": "1",
+                            "locale": "ru",
+                            "toolbar_bg": "#f1f3f6",
+                            "enable_publishing": false,
+                            "hide_side_toolbar": false,
+                            "allow_symbol_change": true,
+                            "save_image": true,
+                            "container_id": "tradingview_chart"
+                        });
+                    }
+                    // Initialize if the script is loaded, or wait
+                    if (window.TradingView) window.initTVWidget();
+                    else {
+                        const script = document.querySelector('script[src*="tv.js"]');
+                        if (script) script.onload = () => window.initTVWidget();
+                    }
+                    </script>
+                </div>
+                <!-- TradingView Widget END -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Onboarding Modal -->
+    <div class="modal-overlay" id="onboardingModal" style="z-index: 100000; background: rgba(10, 15, 30, 0.95); backdrop-filter: blur(10px);">
+        <div class="modal" style="max-width: 450px; text-align: center; border: 1px solid rgba(168, 85, 247, 0.3); box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🚀</div>
+            <h2 style="margin-bottom: 12px; font-size: 1.5rem; background: linear-gradient(135deg, #fff, var(--purple-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Добро пожаловать в TradeVault!</h2>
+            <p style="color: var(--text-muted); margin-bottom: 30px; font-size: 0.95rem;">Давайте создадим ваш первый торговый счет, чтобы начать вести журнал.</p>
+            
+            <form id="onboardingAccountForm" class="auth-form" style="padding: 0; background: transparent; box-shadow: none;">
+                <div class="form-group" style="text-align: left;">
+                    <label>Название счета</label>
+                    <input type="text" id="onboardingAccName" placeholder="Например: My Real Account" required style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);">
+                </div>
+                <div class="form-group" style="text-align: left; margin-top: 16px;">
+                    <label>Начальный баланс ($)</label>
+                    <input type="text" id="onboardingAccBalance" placeholder="10.000" required style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);" class="money-input">
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 30px; padding: 14px;">Создать и начать ⚡</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="tradeModal">
+        <div class="modal">
+            <div class="modal-header"><h2 id="modalTitle">Детали сделки</h2><button class="modal-close" id="modalClose">✕</button></div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Image Zoom Modal -->
+    <div class="modal-overlay" id="imageModal" style="background: rgba(0,0,0,0.9); z-index: 2000;">
+        <div class="modal" style="background: transparent; border: none; box-shadow: none; max-width: 95vw; max-height: 95vh; padding: 0;">
+            <button class="modal-close" id="imageModalClose" style="top: -40px; right: 0; color: white; background: rgba(255,255,255,0.1);">✕</button>
+            <img id="zoomedImage" style="width: 100%; height: auto; border-radius: 12px; display: block;">
+        </div>
+    </div>
+
+    <!-- Hidden input for editing state -->
+    <input type="hidden" id="editingTradeId" value="">
+
+    <!-- User Detail Modal (Admin) -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="userModalTitle">Управление пользователем</h2>
+                <button class="modal-close" id="userModalClose">✕</button>
+            </div>
+            <div class="modal-body" id="userModalBody" style="padding: 20px;">
+                <!-- Stats and Edit Form will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-overlay" id="logoutModal">
+        <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
+            <div style="margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </div>
+                <h2 style="margin-bottom: 8px;">Выход</h2>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">Вы действительно хотите выйти из аккаунта?</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button class="btn-secondary" id="btnLogoutCancel" style="justify-content: center;">Отмена</button>
+                <button class="btn-primary" id="btnLogoutConfirm" style="background: #ef4444; border-color: #ef4444; justify-content: center;">Выйти</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Confirmation Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
+            <div style="margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h2 id="confirmTitle" style="margin-bottom: 8px;">Подтверждение</h2>
+                <p id="confirmMessage" style="color: var(--text-muted); font-size: 0.95rem;">Вы уверены?</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button class="btn-secondary" id="btnConfirmCancel" style="justify-content: center;">Отмена</button>
+                <button class="btn-primary" id="btnConfirmOk" style="background: #ef4444; border-color: #ef4444; justify-content: center;">Подтверждаю</button>
+            </div>
+        </div>
+    </div>
+    <!-- Withdrawal Modal -->
+    <div class="modal-overlay" id="withdrawModal">
+        <div class="modal" style="max-width: 400px; padding: 28px;">
+            <div class="modal-header">
+                <h2>Добавить вывод средств</h2>
+                <button class="modal-close" id="withdrawModalClose">✕</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Введите сумму, которую вы вывели с текущего счета.</p>
+            <div class="form-group">
+                <label>Сумма вывода ($)</label>
+                <input type="text" id="withdrawAmount" class="money-input" placeholder="0.00">
+            </div>
+            <button class="btn-primary" id="btnSaveWithdraw" style="width: 100%; justify-content: center; margin-top: 20px;">💾 Сохранить</button>
+            
+            <div style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 12px;">История выводов</h3>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                        <tbody id="withdrawHistoryBody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="database.js"></script>
+    <script src="app.js"></script>
+    <script src="features.js"></script>
+</body>
+</html>
