@@ -66,10 +66,25 @@ class TradeDatabase {
         if (!this.isCloudEnabled) return;
 
         try {
-            // 1. Fetch Users
+            // 1. Fetch Users - Sync cloud IDs to local for existing logins
             const { data: users, error: uErr } = await this.client.from('tv_users').select('*');
-            if (!uErr && users && users.length > 0) {
-                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+            if (!uErr && users) {
+                const localUsers = this.getUsers();
+                const mergedUsers = [...DEFAULT_USERS];
+                
+                // Start with cloud users to ensure they have correct IDs
+                users.forEach(u => {
+                    mergedUsers.push(u);
+                });
+
+                // Add local users only if their login is not in cloud
+                localUsers.forEach(lu => {
+                    if (!mergedUsers.find(mu => mu.login === lu.login)) {
+                        mergedUsers.push(lu);
+                    }
+                });
+                
+                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(mergedUsers));
             }
 
             // 2. Fetch Trades
