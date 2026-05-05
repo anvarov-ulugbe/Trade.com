@@ -325,7 +325,7 @@ function setupAuth() {
 
     const form = document.getElementById('emailAuthForm');
     if (form) {
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log("Auth form submitted", authBox.dataset.mode);
             const mode = authBox.dataset.mode;
@@ -351,20 +351,22 @@ function setupAuth() {
 
             const existing = db.getUsers().find(u => u.login === login);
             if (existing) {
-                showToast("Этот логин уже занят!", "error");
+                showToast("Этот логин ya занят!", "error");
                 return;
             }
 
-            const newUser = db.addUser({
+            const newUser = await db.addUser({
                 login,
                 password: pass,
                 name,
                 role: 'user'
             });
 
-            showToast("Регистрация прошла успешно!", "success");
-            localStorage.setItem('tv_current_user', JSON.stringify(newUser));
-            setTimeout(() => location.reload(), 1500);
+            if (newUser) {
+                showToast("Регистрация прошла успешно!", "success");
+                localStorage.setItem('tv_current_user', JSON.stringify(newUser));
+                setTimeout(() => location.reload(), 1500);
+            }
         }
         });
     }

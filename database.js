@@ -9,7 +9,7 @@ const DB_KEYS = {
 };
 
 const SUPABASE_URL = 'https://uukpbearcztqkshwnfui.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_gVd_dI6RIFlVEk2ksjMD_g_xdvVdoTC';
+const SUPABASE_KEY = 'sb_publishable_gVd_cIGRIFlVEk2ksjMD_g_xdvVdoTC';
 
 // Initial data for fallback
 const DEFAULT_USERS = [
@@ -30,27 +30,51 @@ const DEFAULT_SETTINGS = {
     strategies: ['ICT Silver Bullet', 'Judas Swing', 'Turtle Soup', 'MSS', 'FVG Reversal', 'ICT OB', 'ICT FVG', 'ICT BOS', 'SMC', 'Другое']
 };
 
+const DEFAULT_TARGETS = {
+    weeklyPnl: 500,
+    monthlyPnl: 2000,
+    weeklyTrades: 10,
+    minWinRate: 55,
+    maxDailyLoss: 200
+};
+
 class TradeDatabase {
     constructor() {
-        this.client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        this.isCloudEnabled = true;
+        try {
+            if (typeof supabase !== 'undefined') {
+                this.client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                this.isCloudEnabled = true;
+            } else {
+                console.warn("Supabase SDK not loaded. Running in local mode.");
+                this.isCloudEnabled = false;
+            }
+        } catch (e) {
+            console.error("Error initializing Supabase client:", e);
+            this.isCloudEnabled = false;
+        }
     }
 
     async init() {
-        console.log("DB: Initializing Cloud Storage...");
+        console.log("DB: Initializing Storage...");
+        
+        // Ensure defaults exist first
+        if (!localStorage.getItem(DB_KEYS.USERS)) localStorage.setItem(DB_KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+        if (!localStorage.getItem(DB_KEYS.TRADES)) localStorage.setItem(DB_KEYS.TRADES, JSON.stringify([]));
+        if (!localStorage.getItem(DB_KEYS.SETTINGS)) localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+        if (!localStorage.getItem(DB_KEYS.TARGETS)) localStorage.setItem(DB_KEYS.TARGETS, JSON.stringify(DEFAULT_TARGETS));
+
+        if (!this.isCloudEnabled) return;
+
         try {
             // 1. Fetch Users
             const { data: users, error: uErr } = await this.client.from('tv_users').select('*');
             if (!uErr && users && users.length > 0) {
                 localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
-            } else if (!localStorage.getItem(DB_KEYS.USERS)) {
-                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(DEFAULT_USERS));
             }
 
             // 2. Fetch Trades
             const { data: trades, error: tErr } = await this.client.from('tv_trades').select('*');
             if (!tErr && trades) {
-                // Convert snake_case from DB back to camelCase for app
                 const formattedTrades = trades.map(t => ({
                     id: t.id,
                     date: t.date,
@@ -75,7 +99,7 @@ class TradeDatabase {
             }
 
             // 3. Fetch Settings for current user
-            const currentUser = JSON.parse(localStorage.getItem('tv_current_user'));
+            const currentUser = JSON.parse(localStorage.getItem('tv_current_user') || 'null');
             if (currentUser) {
                 const { data: settingsData, error: sErr } = await this.client
                     .from('tv_settings')
@@ -87,7 +111,6 @@ class TradeDatabase {
                     localStorage.setItem(`tv_settings_${currentUser.id}`, JSON.stringify(settingsData.settings));
                 }
             }
-
             console.log("DB: Cloud Sync Complete.");
         } catch (e) {
             console.error("DB: Cloud Sync Failed, using local cache.", e);
@@ -96,31 +119,44 @@ class TradeDatabase {
 
     // === Users ===
     getUsers() { 
-        return JSON.parse(localStorage.getItem(DB_KEYS.USERS) || JSON.stringify(DEFAULT_USERS));
+        try {
+            const data = localStorage.getItem(DB_KEYS.USERS);
+            if (!data || data === 'undefined' || data === 'null') return DEFAULT_USERS;
+            return JSON.parse(data);
+        } catch (e) {
+            console.error("Error parsing users:", e);
+            return DEFAULT_USERS;
+        }
     }
     getUserById(id) { return this.getUsers().find(u => u.id === id); }
     async addUser(u) {
         const list = this.getUsers();
-        // Check if admin is creating or public signup
-        const { data, error } = await this.client.from('tv_users').insert([{
-            login: u.login,
-            password: u.password,
-            name: u.name,
-            role: u.role || 'user'
-        }]).select();
+        let newUser = { ...u, id: 'u' + Date.now() };
 
-        if (error) {
-            console.error("Supabase error adding user:", error);
-            return null;
+        if (this.isCloudEnabled) {
+            const { data, error } = await this.client.from('tv_users').insert([{
+                login: u.login,
+                password: u.password,
+                name: u.name,
+                role: u.role || 'user'
+            }]).select();
+
+            if (error) {
+                console.error("Supabase error adding user:", error);
+                return null;
+            }
+            newUser = data[0];
         }
 
-        const newUser = data[0];
         list.push(newUser);
         localStorage.setItem(DB_KEYS.USERS, JSON.stringify(list));
 
-        // Create default settings for new user in cloud
         const initialSettings = { ...DEFAULT_SETTINGS, accounts: [], activeAccount: null };
-        await this.client.from('tv_settings').insert([{ user_id: newUser.id, settings: initialSettings }]);
+        localStorage.setItem(`tv_settings_${newUser.id}`, JSON.stringify(initialSettings));
+        
+        if (this.isCloudEnabled) {
+            await this.client.from('tv_settings').insert([{ user_id: newUser.id, settings: initialSettings }]);
+        }
         
         return newUser;
     }
@@ -130,13 +166,17 @@ class TradeDatabase {
         if (idx >= 0) {
             Object.assign(list[idx], data);
             localStorage.setItem(DB_KEYS.USERS, JSON.stringify(list));
-            await this.client.from('tv_users').update(data).eq('id', id);
+            if (this.isCloudEnabled) {
+                await this.client.from('tv_users').update(data).eq('id', id);
+            }
         }
     }
     async removeUser(id) {
         const list = this.getUsers().filter(u => u.id !== id);
         localStorage.setItem(DB_KEYS.USERS, JSON.stringify(list));
-        await this.client.from('tv_users').delete().eq('id', id);
+        if (this.isCloudEnabled) {
+            await this.client.from('tv_users').delete().eq('id', id);
+        }
     }
     authenticate(login, password) {
         return this.getUsers().find(u => u.login === login && u.password === password);
@@ -144,8 +184,14 @@ class TradeDatabase {
 
     // === Trades ===
     getAll(account, userId) {
-        let trades = JSON.parse(localStorage.getItem(DB_KEYS.TRADES)) || [];
-        const current = userId || JSON.parse(localStorage.getItem('tv_current_user'))?.id;
+        let trades = [];
+        try {
+            const data = localStorage.getItem(DB_KEYS.TRADES);
+            if (data && data !== 'undefined' && data !== 'null') trades = JSON.parse(data);
+        } catch (e) {
+            console.error("Error parsing trades:", e);
+        }
+        const current = userId || JSON.parse(localStorage.getItem('tv_current_user') || 'null')?.id;
         if (current && current !== 'admin') trades = trades.filter(t => t.userId === current);
         if (account) trades = trades.filter(t => t.account === account);
         return trades;
@@ -153,30 +199,35 @@ class TradeDatabase {
     getById(id) { return (JSON.parse(localStorage.getItem(DB_KEYS.TRADES))||[]).find(t => t.id === id); }
     async add(trade) {
         const currentUser = JSON.parse(localStorage.getItem('tv_current_user'));
-        const { data, error } = await this.client.from('tv_trades').insert([{
-            user_id: currentUser?.id,
-            account: trade.account,
-            date: trade.date,
-            pair: trade.pair,
-            direction: trade.direction,
-            entry: trade.entry,
-            exit: trade.exit,
-            sl: trade.sl,
-            tp: trade.tp,
-            lot: trade.lot,
-            pnl: trade.pnl,
-            strategy: trade.strategy,
-            timeframe: trade.timeframe,
-            confluence: trade.confluence,
-            notes: trade.notes,
-            screenshot: trade.screenshot,
-            is_starred: trade.isStarred
-        }]).select();
+        let savedTrade = { ...trade, id: Date.now(), userId: currentUser?.id || 'admin' };
+        
+        if (this.isCloudEnabled) {
+            const { data, error } = await this.client.from('tv_trades').insert([{
+                user_id: currentUser?.id,
+                account: trade.account,
+                date: trade.date,
+                pair: trade.pair,
+                direction: trade.direction,
+                entry: trade.entry,
+                exit: trade.exit,
+                sl: trade.sl,
+                tp: trade.tp,
+                lot: trade.lot,
+                pnl: trade.pnl,
+                strategy: trade.strategy,
+                timeframe: trade.timeframe,
+                confluence: trade.confluence,
+                notes: trade.notes,
+                screenshot: trade.screenshot,
+                is_starred: trade.isStarred
+            }]).select();
 
-        if (error) { console.error("Cloud Error:", error); return null; }
+            if (!error && data && data.length > 0) {
+                savedTrade = { ...trade, id: data[0].id, userId: data[0].user_id };
+            }
+        }
         
         const list = JSON.parse(localStorage.getItem(DB_KEYS.TRADES)) || [];
-        const savedTrade = { ...trade, id: data[0].id, userId: data[0].user_id };
         list.push(savedTrade);
         localStorage.setItem(DB_KEYS.TRADES, JSON.stringify(list));
         return savedTrade;
@@ -185,7 +236,7 @@ class TradeDatabase {
         const list = JSON.parse(localStorage.getItem(DB_KEYS.TRADES)) || [];
         const filtered = list.filter(t => t.id !== id);
         localStorage.setItem(DB_KEYS.TRADES, JSON.stringify(filtered));
-        await this.client.from('tv_trades').delete().eq('id', id);
+        if (this.isCloudEnabled) await this.client.from('tv_trades').delete().eq('id', id);
     }
     async update(id, data) {
         const list = JSON.parse(localStorage.getItem(DB_KEYS.TRADES)) || [];
@@ -194,26 +245,27 @@ class TradeDatabase {
             Object.assign(list[idx], data);
             localStorage.setItem(DB_KEYS.TRADES, JSON.stringify(list));
             
-            // Map camelCase back to snake_case for DB
-            const cloudData = {
-                account: data.account,
-                date: data.date,
-                pair: data.pair,
-                direction: data.direction,
-                entry: data.entry,
-                exit: data.exit,
-                sl: data.sl,
-                tp: data.tp,
-                lot: data.lot,
-                pnl: data.pnl,
-                strategy: data.strategy,
-                timeframe: data.timeframe,
-                confluence: data.confluence,
-                notes: data.notes,
-                screenshot: data.screenshot,
-                is_starred: data.isStarred
-            };
-            await this.client.from('tv_trades').update(cloudData).eq('id', id);
+            if (this.isCloudEnabled) {
+                const cloudData = {
+                    account: data.account,
+                    date: data.date,
+                    pair: data.pair,
+                    direction: data.direction,
+                    entry: data.entry,
+                    exit: data.exit,
+                    sl: data.sl,
+                    tp: data.tp,
+                    lot: data.lot,
+                    pnl: data.pnl,
+                    strategy: data.strategy,
+                    timeframe: data.timeframe,
+                    confluence: data.confluence,
+                    notes: data.notes,
+                    screenshot: data.screenshot,
+                    is_starred: data.isStarred
+                };
+                await this.client.from('tv_trades').update(cloudData).eq('id', id);
+            }
         }
     }
     async toggleStar(id) {
@@ -222,7 +274,7 @@ class TradeDatabase {
         if (idx >= 0) {
             list[idx].isStarred = !list[idx].isStarred;
             localStorage.setItem(DB_KEYS.TRADES, JSON.stringify(list));
-            await this.client.from('tv_trades').update({ is_starred: list[idx].isStarred }).eq('id', id);
+            if (this.isCloudEnabled) await this.client.from('tv_trades').update({ is_starred: list[idx].isStarred }).eq('id', id);
         }
     }
     getStarredTrades() {
@@ -250,14 +302,20 @@ class TradeDatabase {
     }
     getSettings() { 
         const key = this._getSettingsKey();
-        return JSON.parse(localStorage.getItem(key)) || DEFAULT_SETTINGS; 
+        try {
+            const data = localStorage.getItem(key);
+            if (data && data !== 'undefined' && data !== 'null') return JSON.parse(data);
+        } catch (e) {
+            console.error("Error parsing settings:", e);
+        }
+        return DEFAULT_SETTINGS; 
     }
     async saveSettings(s) { 
         const key = this._getSettingsKey();
         localStorage.setItem(key, JSON.stringify(s)); 
         
-        const user = JSON.parse(localStorage.getItem('tv_current_user'));
-        if (user) {
+        const user = JSON.parse(localStorage.getItem('tv_current_user') || 'null');
+        if (user && this.isCloudEnabled) {
             await this.client.from('tv_settings').upsert({ user_id: user.id, settings: s });
         }
     }
@@ -283,9 +341,9 @@ class TradeDatabase {
         }
         await this.saveSettings(s);
         
-        // Remove cloud trades
-        await this.client.from('tv_trades').delete().eq('account', id);
-        // Local cache refresh
+        if (this.isCloudEnabled) {
+            await this.client.from('tv_trades').delete().eq('account', id);
+        }
         const trades = JSON.parse(localStorage.getItem(DB_KEYS.TRADES)) || [];
         localStorage.setItem(DB_KEYS.TRADES, JSON.stringify(trades.filter(t => t.account !== id)));
     }
@@ -320,11 +378,19 @@ class TradeDatabase {
     }
 
     // === Targets ===
-    getTargets() { return JSON.parse(localStorage.getItem(DB_KEYS.TARGETS)) || DEFAULT_TARGETS; }
+    getTargets() { 
+        try {
+            const data = localStorage.getItem(DB_KEYS.TARGETS);
+            if (data && data !== 'undefined' && data !== 'null') return JSON.parse(data);
+        } catch (e) {
+            console.error("Error parsing targets:", e);
+        }
+        return DEFAULT_TARGETS; 
+    }
     async saveTargets(t) { 
         localStorage.setItem(DB_KEYS.TARGETS, JSON.stringify(t)); 
-        const user = JSON.parse(localStorage.getItem('tv_current_user'));
-        if (user) {
+        const user = JSON.parse(localStorage.getItem('tv_current_user') || 'null');
+        if (user && this.isCloudEnabled) {
             await this.client.from('tv_targets').upsert({ user_id: user.id, targets: t });
         }
     }
@@ -390,7 +456,7 @@ class TradeDatabase {
     _top(t) { return this._grp(t,'pair').slice(0,5); }
     _confluenceStats(trades) { const m={};for(let i=0;i<=5;i++)m[i]={score:i,trades:0,wins:0,pnl:0};trades.forEach(t=>{const s=t.confluence||0;m[s].trades++;m[s].pnl+=t.pnl;if(t.pnl>0)m[s].wins++});return Object.values(m); }
 
-    async getWeekProgress() {
+    getWeekProgress() {
         const targets = this.getTargets();
         const now = new Date();
         const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
@@ -409,8 +475,10 @@ class TradeDatabase {
 
     async reset() {
         localStorage.clear();
-        await this.client.from('tv_trades').delete().neq('id', 0);
-        await this.client.from('tv_settings').delete().neq('user_id', '00000000-0000-0000-0000-000000000000');
+        if (this.isCloudEnabled) {
+            await this.client.from('tv_trades').delete().neq('id', 0);
+            await this.client.from('tv_settings').delete().neq('user_id', '00000000-0000-0000-0000-000000000000');
+        }
         location.reload();
     }
 }

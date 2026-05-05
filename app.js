@@ -1,7 +1,13 @@
 // ===== TradeVault App v2 — Core =====
 document.addEventListener('DOMContentLoaded',async ()=>{await initApp()});
 async function initApp(){
-    await db.init();
+    // Start cloud init in background to not block UI
+    db.init().then(() => {
+        console.log("DB: Cloud sync finished.");
+        // Refresh UI if needed after cloud data arrives
+        if (typeof populateFilters === 'function') populateFilters();
+    }).catch(e => console.error("Cloud init failed:", e));
+
     setupNav();setupMobile();setDate();setupTheme();setupAccounts();
     loadDashboard();loadTradesList();loadStatsPage();loadCalendar();
     setupAddForm();setupFilters();setupReset();setupSearch();
