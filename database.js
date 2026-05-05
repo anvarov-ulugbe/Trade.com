@@ -9,7 +9,7 @@ const DB_KEYS = {
 };
 
 const SUPABASE_URL = 'https://uukpbearcztqkshwnfui.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_gVd_cIGRIFlVEk2ksjMD_g_xdvVdoTC';
+const SUPABASE_KEY = 'sb_publishable_gVd_dI6RIFlVEk2ksjMD_g_xdvVdoTC';
 
 // Initial data for fallback
 const DEFAULT_USERS = [
@@ -142,10 +142,11 @@ class TradeDatabase {
             }]).select();
 
             if (error) {
-                console.error("Supabase error adding user:", error);
-                return null;
+                console.warn("Supabase error adding user, falling back to local:", error);
+                // Don't return null, continue with local newUser
+            } else if (data && data.length > 0) {
+                newUser = data[0];
             }
-            newUser = data[0];
         }
 
         list.push(newUser);

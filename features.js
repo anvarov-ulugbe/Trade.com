@@ -351,7 +351,7 @@ function setupAuth() {
 
             const existing = db.getUsers().find(u => u.login === login);
             if (existing) {
-                showToast("Этот логин ya занят!", "error");
+                showToast("Этот логин уже занят!", "error");
                 return;
             }
 
@@ -366,6 +366,8 @@ function setupAuth() {
                 showToast("Регистрация прошла успешно!", "success");
                 localStorage.setItem('tv_current_user', JSON.stringify(newUser));
                 setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast("Ошибка при регистрации! Попробуйте другой логин.", "error");
             }
         }
         });
